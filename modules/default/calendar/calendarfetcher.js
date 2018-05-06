@@ -26,33 +26,7 @@ var CalendarFetcher = function(url, reloadInterval, excludedEvents, maximumEntri
 		reloadTimer = null;
 
 		nodeVersion = Number(process.version.match(/^v(\d+\.\d+)/)[1]);
-		var opts = {
-			headers: {
-				"User-Agent": "Mozilla/5.0 (Node.js "+ nodeVersion + ") MagicMirror/"  + global.version +  " (https://github.com/MichMich/MagicMirror/)"
-			}
-		};
-
-		if (auth) {
-			if(auth.method === "bearer"){
-				opts.auth = {
-					bearer: auth.pass
-				}
-
-			}else{
-				opts.auth = {
-					user: auth.user,
-					pass: auth.pass
-				};
-
-				if(auth.method === "digest"){
-					opts.auth.sendImmediately = false;
-				}else{
-					opts.auth.sendImmediately = true;
-				}
-			}
-		}
-
-		ical.fromURL(url, opts, function(err, data) {
+		this.fetchCb = function(err, data) {
 			if (err) {
 				fetchFailedCallback(self, err);
 				scheduleTimer();
@@ -234,7 +208,40 @@ var CalendarFetcher = function(url, reloadInterval, excludedEvents, maximumEntri
 
 			self.broadcastEvents();
 			scheduleTimer();
-		});
+		};
+
+		if (url.substr(0, 7) == "http://") {
+			var opts = {
+				headers: {
+					"User-Agent": "Mozilla/5.0 (Node.js "+ nodeVersion + ") MagicMirror/"  + global.version +  " (https://github.com/MichMich/MagicMirror/)"
+				}
+			};
+
+			if (auth) {
+				if(auth.method === "bearer"){
+					opts.auth = {
+						bearer: auth.pass
+					}
+
+				}else{
+					opts.auth = {
+						user: auth.user,
+						pass: auth.pass
+					};
+
+					if(auth.method === "digest"){
+						opts.auth.sendImmediately = false;
+					}else{
+						opts.auth.sendImmediately = true;
+					}
+				}
+			}
+
+			ical.fromURL(url, opts, this.fetchCb);
+		} else {
+			data = ical.parseFile(url)
+			this.fetchCb(undefined, data)
+		}
 	};
 
 	/* scheduleTimer()
